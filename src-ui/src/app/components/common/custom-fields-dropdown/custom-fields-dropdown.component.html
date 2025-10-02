@@ -1,9 +1,35 @@
-<div ngbDropdown #fieldDropdown="ngbDropdown" (openChange)="onOpenClose($event)" [popperOptions]="popperOptions" placement="bottom-end">
-    <button class="btn btn-sm btn-outline-primary" id="customFieldsDropdown" [disabled]="disabled" ngbDropdownToggle>
-      <i-bs name="ui-radios"></i-bs>
-      <div class="d-none d-sm-inline">&nbsp;<ng-container i18n>Custom Fields</ng-container></div>
+<div
+  ngbDropdown
+  #fieldDropdown="ngbDropdown"
+  (openChange)="onOpenClose($event)"
+  [popperOptions]="popperOptions"
+  placement="bottom-end"
+  [class.custom-fields-dropdown__container-accordion]="variant === 'accordion'"
+>
+    <button
+      type="button"
+      [ngClass]="toggleButtonClasses"
+      id="customFieldsDropdown"
+      [disabled]="disabled"
+      ngbDropdownToggle
+      [class.is-open]="fieldDropdown.isOpen()"
+    >
+      @if (variant === 'accordion') {
+        <span class="custom-fields-dropdown__toggle-label" i18n>Custom Fields</span>
+        <i-bs
+          class="custom-fields-dropdown__toggle-icon"
+          name="chevron-down"
+        ></i-bs>
+      } @else {
+        <i-bs name="ui-radios"></i-bs>
+        <div class="d-none d-sm-inline">&nbsp;<ng-container i18n>Custom Fields</ng-container></div>
+      }
     </button>
-    <div ngbDropdownMenu aria-labelledby="customFieldsDropdown" class="shadow custom-fields-dropdown">
+    <div
+      ngbDropdownMenu
+      aria-labelledby="customFieldsDropdown"
+      [ngClass]="dropdownMenuClasses"
+    >
         <div class="list-group list-group-flush" (keydown)="listKeyDown($event)">
             <div class="list-group-item">
                 <div class="input-group input-group-sm">
@@ -11,17 +37,17 @@
                 </div>
             </div>
             @for (field of filteredFields; track field.id) {
-                <button class="list-group-item list-group-item-action bg-light" (click)="addField(field)" #button>
+                <button type="button" class="list-group-item list-group-item-action bg-light" (click)="addField(field)" #button>
                     <small class="d-flex">{{field.name}} <small class="ms-auto text-muted">{{getDataTypeLabel(field.data_type)}}</small></small>
                 </button>
             }
             @if (!filterText?.length || filteredFields.length === 0) {
-                <button class="list-group-item list-group-item-action bg-light" (click)="createField(filterText)" [disabled]="!canCreateFields" #button>
+                <button type="button" class="list-group-item list-group-item-action bg-light" (click)="createField(filterText)" [disabled]="!canCreateFields" #button>
                     <small>
                         <i-bs width=".9em" height=".9em" name="asterisk"></i-bs>&nbsp;<ng-container i18n>Create new field</ng-container>
                     </small>
                 </button>
-            }
-        </div>
+      }
     </div>
+</div>
 </div>

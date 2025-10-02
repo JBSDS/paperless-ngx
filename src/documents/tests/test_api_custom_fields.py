@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from documents.models import Correspondent
 from documents.models import CustomField
 from documents.models import CustomFieldInstance
 from documents.models import Document
@@ -57,6 +58,9 @@ class TestCustomFieldsAPI(DirectoriesMixin, APITestCase):
 
             self.assertEqual(data["name"], name)
             self.assertEqual(data["data_type"], field_type)
+            self.assertEqual(data["scope"], "document")
+            self.assertEqual(data.get("correspondent_count"), 0)
+            self.assertEqual(data.get("document_count"), 0)
 
         resp = self.client.post(
             self.ENDPOINT,
@@ -85,6 +89,24 @@ class TestCustomFieldsAPI(DirectoriesMixin, APITestCase):
                 {"label": "Option 2", "id": "def-456"},
             ],
         )
+        self.assertEqual(data["scope"], "document")
+
+    def test_create_custom_field_with_correspondent_scope(self):
+        resp = self.client.post(
+            self.ENDPOINT,
+            json.dumps(
+                {
+                    "data_type": "string",
+                    "name": "Correspondent Field",
+                    "scope": "correspondent",
+                },
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        data = resp.json()
+        self.assertEqual(data["scope"], "correspondent")
 
     def test_create_custom_field_nonunique_name(self):
         """
@@ -1281,3 +1303,27 @@ class TestCustomFieldsAPI(DirectoriesMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = response.data["results"]
         self.assertEqual(results[0]["document_count"], 0)
+
+    def test_custom_fields_correspondent_count(self):
+        field = CustomField.objects.create(
+            name="Correspondent Notes",
+            data_type=CustomField.FieldDataType.STRING,
+            scope=CustomField.FieldScope.CORRESPONDENT,
+        )
+        c1 = Correspondent.objects.create(name="c1")
+        c2 = Correspondent.objects.create(name="c2")
+        CustomFieldInstance.objects.create(
+            correspondent=c1,
+            field=field,
+            value_text="alpha",
+        )
+        CustomFieldInstance.objects.create(
+            correspondent=c2,
+            field=field,
+            value_text="beta",
+        )
+
+        response = self.client.get(self.ENDPOINT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result = next(r for r in response.data["results"] if r["id"] == field.id)
+        self.assertEqual(result["correspondent_count"], 2)

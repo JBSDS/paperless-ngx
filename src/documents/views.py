@@ -387,7 +387,11 @@ class PermissionsAwareDocumentCountMixin(BulkPermissionMixin, PassUserMixin):
 class CorrespondentViewSet(ModelViewSet, PermissionsAwareDocumentCountMixin):
     model = Correspondent
 
-    queryset = Correspondent.objects.select_related("owner").order_by(Lower("name"))
+    queryset = (
+        Correspondent.objects.select_related("owner")
+        .prefetch_related("correspondent_custom_fields__field")
+        .order_by(Lower("name"))
+    )
 
     serializer_class = CorrespondentSerializer
     pagination_class = StandardPagination
@@ -2761,27 +2765,29 @@ class CustomFieldViewSet(ModelViewSet):
     queryset = CustomField.objects.all().order_by("-created")
 
     def get_queryset(self):
-        filter = (
-            Q(fields__document__deleted_at__isnull=True)
-            if self.request.user is None or self.request.user.is_superuser
-            else (
-                Q(
-                    fields__document__deleted_at__isnull=True,
-                    fields__document__id__in=get_objects_for_user_owner_aware(
-                        self.request.user,
-                        "documents.view_document",
-                        Document,
-                    ).values_list("id", flat=True),
-                )
+        document_filter = Q(fields__document__deleted_at__isnull=True)
+        document_filter &= Q(fields__document__isnull=False)
+        if not (self.request.user is None or self.request.user.is_superuser):
+            document_filter &= Q(
+                fields__document__id__in=get_objects_for_user_owner_aware(
+                    self.request.user,
+                    "documents.view_document",
+                    Document,
+                ).values_list("id", flat=True),
             )
-        )
+
+        correspondent_filter = Q(fields__correspondent__isnull=False)
         return (
             super()
             .get_queryset()
             .annotate(
                 document_count=Count(
                     "fields",
-                    filter=filter,
+                    filter=document_filter,
+                ),
+                correspondent_count=Count(
+                    "fields",
+                    filter=correspondent_filter,
                 ),
             )
         )

@@ -11,9 +11,14 @@ import {
 } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
+import { NgClass } from '@angular/common'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first, takeUntil } from 'rxjs'
-import { CustomField, DATA_TYPE_LABELS } from 'src/app/data/custom-field'
+import {
+  CustomField,
+  CustomFieldScope,
+  DATA_TYPE_LABELS,
+} from 'src/app/data/custom-field'
 import { CustomFieldInstance } from 'src/app/data/custom-field-instance'
 import {
   PermissionAction,
@@ -35,6 +40,7 @@ import { CustomFieldEditDialogComponent } from '../edit-dialog/custom-field-edit
     NgxBootstrapIconsModule,
     FormsModule,
     ReactiveFormsModule,
+    NgClass,
   ],
 })
 export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissions {
@@ -54,6 +60,19 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
   @Input()
   existingFields: CustomFieldInstance[] = []
 
+  @Input()
+  scope: CustomFieldScope = CustomFieldScope.Document
+
+  @Input()
+  variant: 'default' | 'accordion' = 'default'
+
+  get toggleButtonClasses(): string {
+    if (this.variant === 'accordion') {
+      return 'custom-fields-dropdown__toggle custom-fields-dropdown__toggle--accordion'
+    }
+    return 'btn btn-sm btn-outline-primary'
+  }
+
   @Output()
   added: EventEmitter<CustomField> = new EventEmitter()
 
@@ -66,6 +85,12 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
   private customFields: CustomField[] = []
   private unusedFields: CustomField[] = []
   private keyboardIndex: number
+
+  get dropdownMenuClasses(): string {
+    return this.variant === 'accordion'
+      ? 'shadow custom-fields-dropdown custom-fields-dropdown__menu--accordion'
+      : 'shadow custom-fields-dropdown'
+  }
 
   public get filteredFields(): CustomField[] {
     return this.unusedFields.filter(
@@ -101,7 +126,9 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
 
   private updateUnusedFields() {
     this.unusedFields = this.customFields.filter(
-      (f) => !this.existingFields?.find((e) => e.field === f.id)
+      (f) =>
+        this.isFieldApplicable(f) &&
+        !this.existingFields?.find((e) => e.field === f.id)
     )
   }
 
@@ -117,13 +144,20 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
   }
 
   addField(field: CustomField) {
+    if (!this.isFieldApplicable(field)) {
+      return
+    }
     this.added.emit(field)
     this.updateUnusedFields()
   }
 
   createField(newName: string = null) {
     const modal = this.modalService.open(CustomFieldEditDialogComponent)
-    if (newName) modal.componentInstance.object = { name: newName }
+    const initialObject: Partial<CustomField> = {
+      scope: this.scope,
+    }
+    if (newName) initialObject.name = newName
+    modal.componentInstance.object = initialObject as CustomField
     modal.componentInstance.succeeded
       .pipe(takeUntil(this.unsubscribeNotifier))
       .subscribe((newField) => {
@@ -138,6 +172,12 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
       .subscribe((e) => {
         this.toastService.showError($localize`Error saving field.`, e)
       })
+  }
+
+  private isFieldApplicable(field: CustomField): boolean {
+    return (
+      field.scope === CustomFieldScope.Both || field.scope === this.scope
+    )
   }
 
   getDataTypeLabel(dataType: string) {

@@ -403,6 +403,10 @@ def update_filename_and_move_files(
     if isinstance(instance, CustomFieldInstance):
         instance = instance.document
 
+    if instance is None:
+        # Custom field attached to a correspondent; nothing to move
+        return
+
     def validate_move(instance, old_path: Path, new_path: Path):
         if not old_path.is_file():
             # Can't do anything if the old file does not exist anymore.

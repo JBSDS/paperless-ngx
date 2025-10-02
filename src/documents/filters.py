@@ -202,6 +202,7 @@ class CustomFieldFilterSet(FilterSet):
         fields = {
             "id": ID_KWARGS,
             "name": CHAR_KWARGS,
+            "scope": ("exact",),
         }
 
 

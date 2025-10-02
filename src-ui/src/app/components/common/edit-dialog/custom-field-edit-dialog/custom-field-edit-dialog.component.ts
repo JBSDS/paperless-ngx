@@ -20,7 +20,9 @@ import { takeUntil } from 'rxjs'
 import {
   CustomField,
   CustomFieldDataType,
+  CustomFieldScope,
   DATA_TYPE_LABELS,
+  SCOPE_LABELS,
 } from 'src/app/data/custom-field'
 import { CustomFieldsService } from 'src/app/services/rest/custom-fields.service'
 import { UserService } from 'src/app/services/rest/user.service'
@@ -49,6 +51,7 @@ export class CustomFieldEditDialogComponent
   implements OnInit, AfterViewInit
 {
   CustomFieldDataType = CustomFieldDataType
+  CustomFieldScope = CustomFieldScope
   SELECT_OPTION_PAGE_SIZE = SELECT_OPTION_PAGE_SIZE
 
   private _allSelectOptions: any[] = []
@@ -126,6 +129,7 @@ export class CustomFieldEditDialogComponent
     return new FormGroup({
       name: new FormControl(null),
       data_type: new FormControl(null),
+      scope: new FormControl(CustomFieldScope.Document),
       extra_data: new FormGroup({
         select_options: new FormArray([]),
         default_currency: new FormControl(null),
@@ -146,6 +150,10 @@ export class CustomFieldEditDialogComponent
 
   getDataTypes() {
     return DATA_TYPE_LABELS
+  }
+
+  getScopes() {
+    return SCOPE_LABELS
   }
 
   get typeFieldDisabled(): boolean {

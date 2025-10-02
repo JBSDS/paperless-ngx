@@ -13,6 +13,12 @@ export enum CustomFieldDataType {
   LongText = 'longtext',
 }
 
+export enum CustomFieldScope {
+  Document = 'document',
+  Correspondent = 'correspondent',
+  Both = 'both',
+}
+
 export const DATA_TYPE_LABELS = [
   {
     id: CustomFieldDataType.Boolean,
@@ -56,8 +62,24 @@ export const DATA_TYPE_LABELS = [
   },
 ]
 
+export const SCOPE_LABELS = [
+  {
+    id: CustomFieldScope.Document,
+    name: $localize`Documents`,
+  },
+  {
+    id: CustomFieldScope.Correspondent,
+    name: $localize`Correspondents`,
+  },
+  {
+    id: CustomFieldScope.Both,
+    name: $localize`Documents & Correspondents`,
+  },
+]
+
 export interface CustomField extends ObjectWithId {
   data_type: CustomFieldDataType
+  scope: CustomFieldScope
   name: string
   created?: Date
   extra_data?: {
@@ -65,4 +87,5 @@ export interface CustomField extends ObjectWithId {
     default_currency?: string
   }
   document_count?: number
+  correspondent_count?: number
 }

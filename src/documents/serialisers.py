@@ -440,8 +440,208 @@ class OwnedObjectListSerializer(serializers.ListSerializer):
         return super().to_representation(documents)
 
 
+class ReadWriteSerializerMethodField(serializers.SerializerMethodField):
+    """
+    Based on https://stackoverflow.com/a/62579804
+    """
+
+    def __init__(self, method_name=None, *args, **kwargs):
+        self.method_name = method_name
+        kwargs["source"] = "*"
+        super(serializers.SerializerMethodField, self).__init__(*args, **kwargs)
+
+    def to_internal_value(self, data):
+        return {self.field_name: data}
+
+
+class CustomFieldInstanceSerializer(serializers.ModelSerializer):
+    field = serializers.PrimaryKeyRelatedField(queryset=CustomField.objects.all())
+    value = ReadWriteSerializerMethodField(allow_null=True)
+
+    def create(self, validated_data):
+        # Instance attaches to a document or correspondent
+        document: Document | None = validated_data.get("document")
+        correspondent = validated_data.get("correspondent")
+        custom_field: CustomField = validated_data["field"]
+        data_store_name = CustomFieldInstance.get_value_field_name(
+            custom_field.data_type,
+        )
+
+        if document is not None and correspondent is not None:
+            raise serializers.ValidationError(
+                "Custom fields must target either a document or a correspondent",
+            )
+
+        if document is None and correspondent is None:
+            raise serializers.ValidationError(
+                "Custom fields require a related document or correspondent",
+            )
+
+        if document is not None and custom_field.scope not in (
+            CustomField.FieldScope.DOCUMENT,
+            CustomField.FieldScope.BOTH,
+        ):
+            raise serializers.ValidationError(
+                "Custom field scope does not allow attaching to documents",
+            )
+
+        if correspondent is not None and custom_field.scope not in (
+            CustomField.FieldScope.CORRESPONDENT,
+            CustomField.FieldScope.BOTH,
+        ):
+            raise serializers.ValidationError(
+                "Custom field scope does not allow attaching to correspondents",
+            )
+
+        if (
+            document is not None
+            and custom_field.data_type == CustomField.FieldDataType.DOCUMENTLINK
+        ):
+            # Prior to update so we can look for any docs that are going to be removed
+            bulk_edit.reflect_doclinks(document, custom_field, validated_data["value"])
+
+        lookup_kwargs = {"field": custom_field}
+        if document is not None:
+            lookup_kwargs["document"] = document
+        else:
+            lookup_kwargs["correspondent"] = correspondent
+
+        instance, _ = CustomFieldInstance.objects.update_or_create(
+            defaults={data_store_name: validated_data["value"]},
+            **lookup_kwargs,
+        )
+        return instance
+
+    def get_value(self, obj: CustomFieldInstance) -> str | int | float | dict | None:
+        return obj.value
+
+    def validate(self, data):
+        """
+        Probably because we're kind of doing it odd, validation from the model
+        doesn't run against the field "value", so we have to re-create it here.
+
+        Don't like it, but it is better than returning an HTTP 500 when the database
+        hates the value
+        """
+        data = super().validate(data)
+        field: CustomField = data["field"]
+        if "value" in data and data["value"] is not None:
+            if (
+                field.data_type == CustomField.FieldDataType.URL
+                and len(data["value"]) > 0
+            ):
+                uri_validator(data["value"])
+            elif field.data_type == CustomField.FieldDataType.INT:
+                integer_validator(data["value"])
+            elif (
+                field.data_type == CustomField.FieldDataType.MONETARY
+                and data["value"] != ""
+            ):
+                try:
+                    # First try to validate as a number from legacy format
+                    DecimalValidator(max_digits=12, decimal_places=2)(
+                        Decimal(str(data["value"])),
+                    )
+                except Exception:
+                    # If that fails, try to validate as a monetary string
+                    RegexValidator(
+                        regex=r"^[A-Z]{3}-?\d+(\.\d{1,2})$",
+                        message="Must be a two-decimal number with optional currency code e.g. GBP123.45",
+                    )(data["value"])
+            elif field.data_type == CustomField.FieldDataType.STRING:
+                MaxLengthValidator(limit_value=128)(data["value"])
+            elif field.data_type == CustomField.FieldDataType.SELECT:
+                select_options = field.extra_data["select_options"]
+                try:
+                    next(
+                        option
+                        for option in select_options
+                        if option["id"] == data["value"]
+                    )
+                except Exception:
+                    raise serializers.ValidationError(
+                        f"Value must be an id of an element in {select_options}",
+                    )
+            elif field.data_type == CustomField.FieldDataType.DOCUMENTLINK:
+                if not (isinstance(data["value"], list) or data["value"] is None):
+                    raise serializers.ValidationError(
+                        "Value must be a list",
+                    )
+                doc_ids = data["value"]
+                if Document.objects.filter(id__in=doc_ids).count() != len(
+                    data["value"],
+                ):
+                    raise serializers.ValidationError(
+                        "Some documents in value don't exist or were specified twice.",
+                    )
+
+        return data
+
+    def get_api_version(self):
+        return int(
+            self.context.get("request").version
+            if self.context.get("request")
+            else settings.REST_FRAMEWORK["DEFAULT_VERSION"],
+        )
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+
+        if (
+            self.get_api_version() < 7
+            and ret.get("field").data_type == CustomField.FieldDataType.SELECT
+            and ret.get("value") is not None
+        ):
+            # Convert the index of the option in the field.extra_data["select_options"]
+            # list to the option's unique id
+            ret["value"] = ret.get("field").extra_data["select_options"][ret["value"]][
+                "id"
+            ]
+
+        return ret
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+
+        if (
+            self.get_api_version() < 7
+            and instance.field.data_type == CustomField.FieldDataType.SELECT
+        ):
+            # Return the index of the option in the field.extra_data["select_options"] list
+            ret["value"] = next(
+                (
+                    idx
+                    for idx, option in enumerate(
+                        instance.field.extra_data["select_options"],
+                    )
+                    if option["id"] == instance.value
+                ),
+                None,
+            )
+
+        return ret
+
+    class Meta:
+        model = CustomFieldInstance
+        fields = [
+            "value",
+            "field",
+        ]
+
+
 class CorrespondentSerializer(MatchingModelSerializer, OwnedObjectSerializer):
     last_correspondence = serializers.DateField(read_only=True, required=False)
+    custom_fields = CustomFieldInstanceSerializer(
+        many=True,
+        required=False,
+        source="correspondent_custom_fields",
+    )
+    owner = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True,
+        default=serializers.CurrentUserDefault(),
+    )
 
     class Meta:
         model = Correspondent
@@ -454,11 +654,54 @@ class CorrespondentSerializer(MatchingModelSerializer, OwnedObjectSerializer):
             "is_insensitive",
             "document_count",
             "last_correspondence",
+            "custom_fields",
             "owner",
             "permissions",
             "user_can_change",
             "set_permissions",
         )
+
+    def create(self, validated_data):
+        custom_fields_data = validated_data.pop("correspondent_custom_fields", [])
+        correspondent = super().create(validated_data)
+        self._replace_custom_fields(correspondent, custom_fields_data)
+        return correspondent
+
+    def update(self, instance, validated_data):
+        custom_fields_data = validated_data.pop("correspondent_custom_fields", None)
+        correspondent = super().update(instance, validated_data)
+        if custom_fields_data is not None:
+            self._replace_custom_fields(correspondent, custom_fields_data)
+        return correspondent
+
+    def _replace_custom_fields(self, correspondent, custom_fields_data):
+        if not custom_fields_data:
+            correspondent.correspondent_custom_fields.all().delete()
+            return
+
+        seen_fields = set()
+        for item in custom_fields_data:
+            custom_field = item.get("field")
+            if isinstance(custom_field, int):
+                try:
+                    custom_field = CustomField.objects.get(pk=custom_field)
+                except CustomField.DoesNotExist as exc:
+                    raise serializers.ValidationError(
+                        {"custom_fields": _("Custom field with id %(id)s does not exist") % {"id": item.get("field")}},
+                    ) from exc
+
+            item_with_parent = {
+                **item,
+                "correspondent": correspondent,
+                "field": custom_field,
+            }
+
+            CustomFieldInstanceSerializer(context=self.context).create(item_with_parent)
+            seen_fields.add(custom_field.pk)
+
+        correspondent.correspondent_custom_fields.exclude(
+            field__pk__in=seen_fields,
+        ).delete()
 
 
 class DocumentTypeSerializer(MatchingModelSerializer, OwnedObjectSerializer):
@@ -673,7 +916,14 @@ class CustomFieldSerializer(serializers.ModelSerializer):
         read_only=False,
     )
 
-    document_count = serializers.IntegerField(read_only=True)
+    scope = serializers.ChoiceField(
+        choices=CustomField.FieldScope.choices,
+        default=CustomField.FieldScope.DOCUMENT,
+        required=False,
+    )
+
+    document_count = serializers.IntegerField(read_only=True, default=0)
+    correspondent_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = CustomField
@@ -681,8 +931,10 @@ class CustomFieldSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "data_type",
+            "scope",
             "extra_data",
             "document_count",
+            "correspondent_count",
         ]
 
     def validate(self, attrs):
@@ -778,164 +1030,6 @@ class CustomFieldSerializer(serializers.ModelSerializer):
             ]
 
         return ret
-
-
-class ReadWriteSerializerMethodField(serializers.SerializerMethodField):
-    """
-    Based on https://stackoverflow.com/a/62579804
-    """
-
-    def __init__(self, method_name=None, *args, **kwargs):
-        self.method_name = method_name
-        kwargs["source"] = "*"
-        super(serializers.SerializerMethodField, self).__init__(*args, **kwargs)
-
-    def to_internal_value(self, data):
-        return {self.field_name: data}
-
-
-class CustomFieldInstanceSerializer(serializers.ModelSerializer):
-    field = serializers.PrimaryKeyRelatedField(queryset=CustomField.objects.all())
-    value = ReadWriteSerializerMethodField(allow_null=True)
-
-    def create(self, validated_data):
-        # An instance is attached to a document
-        document: Document = validated_data["document"]
-        # And to a CustomField
-        custom_field: CustomField = validated_data["field"]
-        # This key must exist, as it is validated
-        data_store_name = CustomFieldInstance.get_value_field_name(
-            custom_field.data_type,
-        )
-
-        if custom_field.data_type == CustomField.FieldDataType.DOCUMENTLINK:
-            # prior to update so we can look for any docs that are going to be removed
-            bulk_edit.reflect_doclinks(document, custom_field, validated_data["value"])
-
-        # Actually update or create the instance, providing the value
-        # to fill in the correct attribute based on the type
-        instance, _ = CustomFieldInstance.objects.update_or_create(
-            document=document,
-            field=custom_field,
-            defaults={data_store_name: validated_data["value"]},
-        )
-        return instance
-
-    def get_value(self, obj: CustomFieldInstance) -> str | int | float | dict | None:
-        return obj.value
-
-    def validate(self, data):
-        """
-        Probably because we're kind of doing it odd, validation from the model
-        doesn't run against the field "value", so we have to re-create it here.
-
-        Don't like it, but it is better than returning an HTTP 500 when the database
-        hates the value
-        """
-        data = super().validate(data)
-        field: CustomField = data["field"]
-        if "value" in data and data["value"] is not None:
-            if (
-                field.data_type == CustomField.FieldDataType.URL
-                and len(data["value"]) > 0
-            ):
-                uri_validator(data["value"])
-            elif field.data_type == CustomField.FieldDataType.INT:
-                integer_validator(data["value"])
-            elif (
-                field.data_type == CustomField.FieldDataType.MONETARY
-                and data["value"] != ""
-            ):
-                try:
-                    # First try to validate as a number from legacy format
-                    DecimalValidator(max_digits=12, decimal_places=2)(
-                        Decimal(str(data["value"])),
-                    )
-                except Exception:
-                    # If that fails, try to validate as a monetary string
-                    RegexValidator(
-                        regex=r"^[A-Z]{3}-?\d+(\.\d{1,2})$",
-                        message="Must be a two-decimal number with optional currency code e.g. GBP123.45",
-                    )(data["value"])
-            elif field.data_type == CustomField.FieldDataType.STRING:
-                MaxLengthValidator(limit_value=128)(data["value"])
-            elif field.data_type == CustomField.FieldDataType.SELECT:
-                select_options = field.extra_data["select_options"]
-                try:
-                    next(
-                        option
-                        for option in select_options
-                        if option["id"] == data["value"]
-                    )
-                except Exception:
-                    raise serializers.ValidationError(
-                        f"Value must be an id of an element in {select_options}",
-                    )
-            elif field.data_type == CustomField.FieldDataType.DOCUMENTLINK:
-                if not (isinstance(data["value"], list) or data["value"] is None):
-                    raise serializers.ValidationError(
-                        "Value must be a list",
-                    )
-                doc_ids = data["value"]
-                if Document.objects.filter(id__in=doc_ids).count() != len(
-                    data["value"],
-                ):
-                    raise serializers.ValidationError(
-                        "Some documents in value don't exist or were specified twice.",
-                    )
-
-        return data
-
-    def get_api_version(self):
-        return int(
-            self.context.get("request").version
-            if self.context.get("request")
-            else settings.REST_FRAMEWORK["DEFAULT_VERSION"],
-        )
-
-    def to_internal_value(self, data):
-        ret = super().to_internal_value(data)
-
-        if (
-            self.get_api_version() < 7
-            and ret.get("field").data_type == CustomField.FieldDataType.SELECT
-            and ret.get("value") is not None
-        ):
-            # Convert the index of the option in the field.extra_data["select_options"]
-            # list to the options unique id
-            ret["value"] = ret.get("field").extra_data["select_options"][ret["value"]][
-                "id"
-            ]
-
-        return ret
-
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-
-        if (
-            self.get_api_version() < 7
-            and instance.field.data_type == CustomField.FieldDataType.SELECT
-        ):
-            # return the index of the option in the field.extra_data["select_options"] list
-            ret["value"] = next(
-                (
-                    idx
-                    for idx, option in enumerate(
-                        instance.field.extra_data["select_options"],
-                    )
-                    if option["id"] == instance.value
-                ),
-                None,
-            )
-
-        return ret
-
-    class Meta:
-        model = CustomFieldInstance
-        fields = [
-            "value",
-            "field",
-        ]
 
 
 class BasicUserSerializer(serializers.ModelSerializer):
