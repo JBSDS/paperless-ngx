@@ -6,25 +6,33 @@
   placement="bottom-end"
   [class.custom-fields-dropdown__container-accordion]="variant === 'accordion'"
 >
-    <button
-      type="button"
-      [ngClass]="toggleButtonClasses"
-      id="customFieldsDropdown"
-      [disabled]="disabled"
-      ngbDropdownToggle
-      [class.is-open]="fieldDropdown.isOpen()"
-    >
-      @if (variant === 'accordion') {
-        <span class="custom-fields-dropdown__toggle-label" i18n>Custom Fields</span>
-        <i-bs
-          class="custom-fields-dropdown__toggle-icon"
-          name="chevron-down"
-        ></i-bs>
-      } @else {
+    @if (variant === 'accordion') {
+      <div class="custom-fields-dropdown__select-wrapper">
+        <div
+          class="form-select custom-fields-dropdown__pseudo-select"
+          id="customFieldsDropdown"
+          role="button"
+          ngbDropdownToggle
+          [ngClass]="{
+            collapsed: !fieldDropdown.isOpen(),
+            disabled: disabled
+          }"
+        >
+          <span i18n>Custom Fields</span>
+        </div>
+      </div>
+    } @else {
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-primary"
+        id="customFieldsDropdown"
+        [disabled]="disabled"
+        ngbDropdownToggle
+      >
         <i-bs name="ui-radios"></i-bs>
         <div class="d-none d-sm-inline">&nbsp;<ng-container i18n>Custom Fields</ng-container></div>
-      }
-    </button>
+      </button>
+    }
     <div
       ngbDropdownMenu
       aria-labelledby="customFieldsDropdown"
@@ -47,7 +55,7 @@
                         <i-bs width=".9em" height=".9em" name="asterisk"></i-bs>&nbsp;<ng-container i18n>Create new field</ng-container>
                     </small>
                 </button>
-      }
+            }
+        </div>
     </div>
-</div>
 </div>

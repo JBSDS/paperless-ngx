@@ -66,13 +66,6 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
   @Input()
   variant: 'default' | 'accordion' = 'default'
 
-  get toggleButtonClasses(): string {
-    if (this.variant === 'accordion') {
-      return 'custom-fields-dropdown__toggle custom-fields-dropdown__toggle--accordion'
-    }
-    return 'btn btn-sm btn-outline-primary'
-  }
-
   @Output()
   added: EventEmitter<CustomField> = new EventEmitter()
 

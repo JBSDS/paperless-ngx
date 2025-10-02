@@ -15,43 +15,52 @@
 
 .custom-fields-dropdown__container-accordion {
     width: 100%;
+    margin-bottom: 0.75rem;
+    --bs-accordion-btn-padding-x: 0.75rem;
+    --bs-accordion-btn-padding-y: 0.375rem;
+}
 
-    .custom-fields-dropdown__toggle--accordion {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        text-align: left;
-        padding: 0.55rem 0.75rem;
-        border-radius: var(--bs-border-radius);
-        border: 1px solid var(--bs-border-color);
-        background-color: var(--bs-body-bg);
-        color: var(--bs-success);
-        font-weight: 500;
-        transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+.custom-fields-dropdown__select-wrapper {
+    width: 100%;
+}
 
-        &:hover,
-        &:focus {
-            color: var(--bs-success);
-            border-color: var(--bs-border-color-translucent);
-            box-shadow: 0 0 0 0.25rem rgba(var(--bs-success-rgb), 0.15);
-        }
+.custom-fields-dropdown__pseudo-select {
+    width: 100%;
+    color: var(--bs-success);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+
+    &::after {
+        position: absolute;
+        top: 50%;
+        right: 0.75rem;
+        transform: translateY(-50%);
+        content: '';
+        pointer-events: none;
+        width: 0;
+        height: 0;
+        border-left: .3rem solid transparent;
+        border-right: .3rem solid transparent;
+        border-top: .3rem solid currentColor;
     }
 
-    .custom-fields-dropdown__toggle-icon {
-        margin-left: 0.75rem;
-        transition: transform 0.15s ease;
-        color: inherit;
-        font-size: 0.85rem;
+    &.collapsed::after {
+        transform: translateY(-50%);
     }
 
-    .custom-fields-dropdown__toggle--accordion.is-open .custom-fields-dropdown__toggle-icon {
-        transform: rotate(180deg);
+    &.disabled {
+        pointer-events: none;
+        opacity: 0.6;
     }
+}
 
-    .custom-fields-dropdown__menu--accordion {
-        width: 100%;
-        min-width: auto;
-        margin-top: 0.75rem;
-    }
+.custom-fields-dropdown__menu--accordion {
+    width: 100%;
+    min-width: auto;
 }
