@@ -16,6 +16,8 @@
 .custom-fields-dropdown__container-accordion {
     width: 100%;
     margin-bottom: 0.75rem;
+    --bs-accordion-btn-padding-x: 0.75rem;
+    --bs-accordion-btn-padding-y: 0.375rem;
 }
 
 .custom-fields-dropdown__menu--accordion {

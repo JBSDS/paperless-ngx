@@ -8,7 +8,7 @@
         <div ngbAccordionBody>
           <ng-template>
             <div class="list-group list-group-flush" (keydown)="listKeyDown($event)">
-              <div class="list-group-item">
+              <div class="p-2">
                 <div class="input-group input-group-sm">
                   <input class="form-control" type="text" [(ngModel)]="filterText" placeholder="Search fields" i18n-placeholder (keyup.enter)="listFilterEnter()" #listFilterTextInput>
                 </div>
@@ -55,7 +55,7 @@
       [ngClass]="dropdownMenuClasses"
     >
       <div class="list-group list-group-flush" (keydown)="listKeyDown($event)">
-        <div class="list-group-item">
+        <div class="p-2">
           <div class="input-group input-group-sm">
             <input class="form-control" type="text" [(ngModel)]="filterText" placeholder="Search fields" i18n-placeholder (keyup.enter)="listFilterEnter()" #listFilterTextInput>
           </div>
