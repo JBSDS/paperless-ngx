@@ -10,7 +10,7 @@ import {
   inject,
 } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
-import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
+import { NgbAccordionModule, NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgClass } from '@angular/common'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first, takeUntil } from 'rxjs'
@@ -36,6 +36,7 @@ import { CustomFieldEditDialogComponent } from '../edit-dialog/custom-field-edit
   templateUrl: './custom-fields-dropdown.component.html',
   styleUrls: ['./custom-fields-dropdown.component.scss'],
   imports: [
+    NgbAccordionModule,
     NgbDropdownModule,
     NgxBootstrapIconsModule,
     FormsModule,
@@ -78,6 +79,8 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
   private customFields: CustomField[] = []
   private unusedFields: CustomField[] = []
   private keyboardIndex: number
+
+  public accordionActiveId: string = ''
 
   get dropdownMenuClasses(): string {
     return this.variant === 'accordion'
@@ -134,6 +137,17 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
       this.filterText = undefined
     }
     this.updateUnusedFields()
+  }
+
+  onAccordionShown() {
+    setTimeout(() => {
+      this.listFilterTextInput?.nativeElement.focus()
+    }, 100)
+    this.updateUnusedFields()
+  }
+
+  onAccordionHidden() {
+    this.filterText = undefined
   }
 
   addField(field: CustomField) {
