@@ -3,8 +3,10 @@ import {
   ElementRef,
   EventEmitter,
   Input,
+  OnChanges,
   Output,
   QueryList,
+  SimpleChanges,
   ViewChild,
   ViewChildren,
   inject,
@@ -44,7 +46,7 @@ import { CustomFieldEditDialogComponent } from '../edit-dialog/custom-field-edit
     NgClass,
   ],
 })
-export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissions {
+export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissions implements OnChanges {
   private customFieldsService = inject(CustomFieldsService)
   private modalService = inject(NgbModal)
   private toastService = inject(ToastService)
@@ -110,6 +112,12 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
     this.getFields()
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['existingFields']) {
+      this.updateUnusedFields()
+    }
+  }
+
   private getFields() {
     this.customFieldsService
       .listAll()
@@ -154,8 +162,9 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
     if (!this.isFieldApplicable(field)) {
       return
     }
+    // Retirer immédiatement le champ de la liste pour éviter les doubles clics
+    this.unusedFields = this.unusedFields.filter(f => f.id !== field.id)
     this.added.emit(field)
-    this.updateUnusedFields()
   }
 
   createField(newName: string = null) {
