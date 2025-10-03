@@ -24,3 +24,45 @@
     width: 100%;
     min-width: auto;
 }
+
+.custom-fields-dropdown__list {
+    max-height: calc(5 * 2.5rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    // Personnalisation de la scrollbar
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--bs-border-color);
+        border-radius: 4px;
+
+        &:hover {
+            background-color: var(--bs-secondary);
+        }
+    }
+
+    // Pour Firefox
+    scrollbar-width: thin;
+    scrollbar-color: var(--bs-border-color) transparent;
+
+    // Retirer les bordures des items list-group
+    .list-group-item {
+        border-left: none;
+        border-right: none;
+
+        &:first-child {
+            border-top: none;
+        }
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+}
