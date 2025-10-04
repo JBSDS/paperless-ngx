@@ -532,7 +532,13 @@ class CustomFieldInstanceSerializer(serializers.ModelSerializer):
             ):
                 uri_validator(data["value"])
             elif field.data_type == CustomField.FieldDataType.INT:
-                integer_validator(data["value"])
+                try:
+                    int_value = int(data["value"])
+                    integer_validator(int_value)
+                except (ValueError, TypeError) as exc:
+                    raise serializers.ValidationError(
+                        "Value must be a valid integer",
+                    ) from exc
             elif (
                 field.data_type == CustomField.FieldDataType.MONETARY
                 and data["value"] != ""
@@ -597,6 +603,22 @@ class CustomFieldInstanceSerializer(serializers.ModelSerializer):
             ret["value"] = ret.get("field").extra_data["select_options"][ret["value"]][
                 "id"
             ]
+
+        # Convert string values to correct types for INT and FLOAT fields
+        if ret.get("value") is not None:
+            field_type = ret.get("field").data_type
+            if field_type == CustomField.FieldDataType.INT:
+                try:
+                    ret["value"] = int(ret["value"])
+                except (ValueError, TypeError):
+                    # Let the validation handle this error
+                    pass
+            elif field_type == CustomField.FieldDataType.FLOAT:
+                try:
+                    ret["value"] = float(ret["value"])
+                except (ValueError, TypeError):
+                    # Let the validation handle this error
+                    pass
 
         return ret
 
@@ -675,6 +697,9 @@ class CorrespondentSerializer(MatchingModelSerializer, OwnedObjectSerializer):
         return correspondent
 
     def _replace_custom_fields(self, correspondent, custom_fields_data):
+        # Clean up any previously soft-deleted instances to avoid duplicates
+        CustomFieldInstance.deleted_objects.filter(correspondent=correspondent).hard_delete()
+
         if not custom_fields_data:
             correspondent.correspondent_custom_fields.all().delete()
             return

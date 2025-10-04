@@ -68,6 +68,9 @@ export class CorrespondentEditDialogComponent extends EditDialogComponent<Corres
   }
 
   override ngOnInit(): void {
+    // Always clear the form array first to prevent duplicates from previous modal instances
+    this.customFieldsFormArray.clear({ emitEvent: false })
+
     if (this.object?.custom_fields) {
       this.initialCustomFieldInstances = this.object.custom_fields
       delete (this.object as any).custom_fields
@@ -126,14 +129,27 @@ export class CorrespondentEditDialogComponent extends EditDialogComponent<Corres
       if (!field) {
         return
       }
+      const alreadyExists = this.customFieldsFormArray.controls.some(
+        (control) => control.get('field')?.value === field.id
+      )
+      if (alreadyExists) {
+        return
+      }
       this.customFieldsFormArray.push(
         this.createCustomFieldFormGroup(field, instance.value),
         { emitEvent: false }
       )
     })
+    this.initialCustomFieldInstances = []
   }
 
   addCustomField(field: CustomField) {
+    const alreadyExists = this.customFieldsFormArray.controls.some(
+      (control) => control.get('field')?.value === field.id
+    )
+    if (alreadyExists) {
+      return
+    }
     this.customFieldMap.set(field.id, field)
     this.customFieldsFormArray.push(
       this.createCustomFieldFormGroup(field, this.defaultValueForField(field)),

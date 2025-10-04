@@ -74,6 +74,7 @@
               <pngx-input-monetary
                 formControlName="value"
                 [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [defaultCurrency]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.extra_data?.default_currency"
                 [horizontal]="true"
                 [removable]="true"
                 (removed)="removeCustomField(i)"
