@@ -30,7 +30,7 @@
     overflow-y: auto;
     overflow-x: hidden;
 
-    // Personnalisation de la scrollbar
+    // Customize the scrollbar appearance
     &::-webkit-scrollbar {
         width: 8px;
     }
@@ -48,11 +48,11 @@
         }
     }
 
-    // Pour Firefox
+    // Firefox-specific scrollbar styling
     scrollbar-width: thin;
     scrollbar-color: var(--bs-border-color) transparent;
 
-    // Retirer les bordures des items list-group
+    // Remove borders from list-group items
     .list-group-item {
         border-left: none;
         border-right: none;

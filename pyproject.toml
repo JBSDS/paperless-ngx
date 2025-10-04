@@ -91,6 +91,7 @@ dev = [
   { "include-group" = "docs" },
   { "include-group" = "testing" },
   { "include-group" = "lint" },
+  "zxing-cpp>=2.3.0",
 ]
 
 docs = [

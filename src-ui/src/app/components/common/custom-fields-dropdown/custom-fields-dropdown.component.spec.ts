@@ -165,10 +165,10 @@ describe('CustomFieldsDropdownComponent', () => {
   it('should switch to accordion styling when variant provided', () => {
     component.variant = 'accordion'
     fixture.detectChanges()
-    const pseudoSelect = fixture.debugElement.query(
-      By.css('.custom-fields-dropdown__pseudo-select')
+    const accordionContainer = fixture.debugElement.query(
+      By.css('.custom-fields-dropdown__container-accordion')
     )
-    expect(pseudoSelect).not.toBeNull()
+    expect(accordionContainer).not.toBeNull()
   })
 
   it('should support arrow keyboard navigation', fakeAsync(() => {

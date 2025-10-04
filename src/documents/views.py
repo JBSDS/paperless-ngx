@@ -2777,6 +2777,14 @@ class CustomFieldViewSet(ModelViewSet):
             )
 
         correspondent_filter = Q(fields__correspondent__isnull=False)
+        if not (self.request.user is None or self.request.user.is_superuser):
+            correspondent_filter &= Q(
+                fields__correspondent__id__in=get_objects_for_user_owner_aware(
+                    self.request.user,
+                    "documents.view_correspondent",
+                    Correspondent,
+                ).values_list("id", flat=True),
+            )
         return (
             super()
             .get_queryset()

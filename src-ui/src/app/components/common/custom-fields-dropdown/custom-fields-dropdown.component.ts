@@ -162,7 +162,7 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
     if (!this.isFieldApplicable(field)) {
       return
     }
-    // Retirer immédiatement le champ de la liste pour éviter les doubles clics
+    // Remove the field immediately to prevent successive double clicks
     this.unusedFields = this.unusedFields.filter(f => f.id !== field.id)
     this.added.emit(field)
   }
