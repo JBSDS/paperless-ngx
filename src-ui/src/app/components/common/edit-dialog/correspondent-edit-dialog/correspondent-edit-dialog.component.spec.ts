@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgbActiveModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
+import { CustomFieldDataType, CustomFieldScope } from 'src/app/data/custom-field'
 import { IfOwnerDirective } from 'src/app/directives/if-owner.directive'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { SettingsService } from 'src/app/services/settings.service'
@@ -57,5 +58,16 @@ describe('CorrespondentEditDialogComponent', () => {
     component.dialogMode = EditDialogMode.EDIT
     fixture.detectChanges()
     expect(editTitleSpy).toHaveBeenCalled()
+  })
+
+  it('should add custom field controls when a field is added', () => {
+    const customField = {
+      id: 101,
+      name: 'Notes',
+      data_type: CustomFieldDataType.String,
+      scope: CustomFieldScope.Correspondent,
+    }
+    component.addCustomField(customField as any)
+    expect(component.customFieldsFormArray.length).toBe(1)
   })
 })

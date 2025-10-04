@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from multiselectfield import MultiSelectField
@@ -96,6 +97,10 @@ class Correspondent(MatchingModel):
     class Meta(MatchingModel.Meta):
         verbose_name = _("correspondent")
         verbose_name_plural = _("correspondents")
+
+    @property
+    def custom_fields(self):
+        return self.correspondent_custom_fields
 
 
 class Tag(MatchingModel, TreeNodeModel):
@@ -794,6 +799,11 @@ class CustomField(models.Model):
         SELECT = ("select", _("Select"))
         LONG_TEXT = ("longtext", _("Long Text"))
 
+    class FieldScope(models.TextChoices):
+        DOCUMENT = ("document", _("Document"))
+        CORRESPONDENT = ("correspondent", _("Correspondent"))
+        BOTH = ("both", _("Document & Correspondent"))
+
     created = models.DateTimeField(
         _("created"),
         default=timezone.now,
@@ -808,6 +818,13 @@ class CustomField(models.Model):
         max_length=50,
         choices=FieldDataType.choices,
         editable=False,
+    )
+
+    scope = models.CharField(
+        _("scope"),
+        max_length=32,
+        choices=FieldScope.choices,
+        default=FieldScope.DOCUMENT,
     )
 
     extra_data = models.JSONField(
@@ -837,7 +854,7 @@ class CustomField(models.Model):
 class CustomFieldInstance(SoftDeleteModel):
     """
     A single instance of a field, attached to a CustomField for the name and type
-    and attached to a single Document to be metadata for it
+    and attached to a single Document or Correspondent as metadata
     """
 
     TYPE_TO_DATA_STORE_NAME_MAP = {
@@ -862,10 +879,19 @@ class CustomFieldInstance(SoftDeleteModel):
 
     document = models.ForeignKey(
         Document,
-        blank=False,
-        null=False,
+        blank=True,
+        null=True,
         on_delete=models.CASCADE,
         related_name="custom_fields",
+        editable=False,
+    )
+
+    correspondent = models.ForeignKey(
+        Correspondent,
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+        related_name="correspondent_custom_fields",
         editable=False,
     )
 
@@ -927,7 +953,20 @@ class CustomFieldInstance(SoftDeleteModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["document", "field"],
+                condition=Q(document__isnull=False),
                 name="%(app_label)s_%(class)s_unique_document_field",
+            ),
+            models.UniqueConstraint(
+                fields=["correspondent", "field"],
+                condition=Q(correspondent__isnull=False),
+                name="%(app_label)s_%(class)s_unique_correspondent_field",
+            ),
+            models.CheckConstraint(
+                check=(
+                    Q(document__isnull=False, correspondent__isnull=True)
+                    | Q(document__isnull=True, correspondent__isnull=False)
+                ),
+                name="%(app_label)s_%(class)s_requires_parent",
             ),
         ]
 

@@ -1,3 +1,7 @@
+:host {
+    display: block;
+}
+
 .custom-fields-dropdown {
     min-width: 300px;
 
@@ -5,6 +9,60 @@
     @media (max-width: 575.98px) {
         &.show {
             margin-left: -245px !important;
+        }
+    }
+}
+
+.custom-fields-dropdown__container-accordion {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    --bs-accordion-btn-padding-x: 0.75rem;
+    --bs-accordion-btn-padding-y: 0.375rem;
+}
+
+.custom-fields-dropdown__menu--accordion {
+    width: 100%;
+    min-width: auto;
+}
+
+.custom-fields-dropdown__list {
+    max-height: calc(5 * 2.5rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    // Personnalisation de la scrollbar
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--bs-border-color);
+        border-radius: 4px;
+
+        &:hover {
+            background-color: var(--bs-secondary);
+        }
+    }
+
+    // Pour Firefox
+    scrollbar-width: thin;
+    scrollbar-color: var(--bs-border-color) transparent;
+
+    // Retirer les bordures des items list-group
+    .list-group-item {
+        border-left: none;
+        border-right: none;
+
+        &:first-child {
+            border-top: none;
+        }
+
+        &:last-child {
+            border-bottom: none;
         }
     }
 }

@@ -16,6 +16,133 @@
       <pngx-input-check i18n-title title="Case insensitive" formControlName="is_insensitive" novalidate></pngx-input-check>
     }
 
+    <pngx-custom-fields-dropdown
+      class="mb-4"
+      [disabled]="networkActive"
+      [existingFields]="existingCustomFieldInstances"
+      (added)="addCustomField($event)"
+      (created)="onCustomFieldCreated($event)"
+      [scope]="CustomFieldScope.Correspondent"
+      variant="accordion">
+    </pngx-custom-fields-dropdown>
+
+    <div formArrayName="custom_fields">
+      @for (fieldGroup of customFieldsFormArray.controls; track $index; let i = $index) {
+        <div class="mb-3 mt-3" [formGroupName]="i">
+          @switch (getCustomFieldDefinition(fieldGroup.get('field')?.value)?.data_type) {
+            @case (CustomFieldDataType.String) {
+              <pngx-input-text
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-text>
+            }
+            @case (CustomFieldDataType.Date) {
+              <pngx-input-date
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-date>
+            }
+            @case (CustomFieldDataType.Integer) {
+              <pngx-input-number
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-number>
+            }
+            @case (CustomFieldDataType.Float) {
+              <pngx-input-number
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-number>
+            }
+            @case (CustomFieldDataType.Monetary) {
+              <pngx-input-monetary
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [defaultCurrency]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.extra_data?.default_currency"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-monetary>
+            }
+            @case (CustomFieldDataType.Boolean) {
+              <pngx-input-check
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)">
+              </pngx-input-check>
+            }
+            @case (CustomFieldDataType.Url) {
+              <pngx-input-url
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-url>
+            }
+            @case (CustomFieldDataType.DocumentLink) {
+              <pngx-input-document-link
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [parentDocumentID]="null"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-document-link>
+            }
+            @case (CustomFieldDataType.Select) {
+              <pngx-input-select
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [items]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.extra_data?.select_options"
+                bindLabel="label"
+                [allowNull]="true"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-select>
+            }
+            @case (CustomFieldDataType.LongText) {
+              <pngx-input-textarea
+                formControlName="value"
+                [title]="getCustomFieldDefinition(fieldGroup.get('field')?.value)?.name"
+                [horizontal]="true"
+                [removable]="true"
+                (removed)="removeCustomField(i)"
+                [error]="getCustomFieldError(i)">
+              </pngx-input-textarea>
+            }
+            @default {
+              <div class="text-muted" i18n>Unsupported field type.</div>
+              <button type="button" class="btn btn-link text-danger p-0" (click)="removeCustomField(i)" i18n>Remove</button>
+            }
+          }
+        </div>
+      }
+    </div>
+
     <div *pngxIfOwner="object">
       <pngx-permissions-form [users]="users" accordion="true" formControlName="permissions_form"></pngx-permissions-form>
     </div>

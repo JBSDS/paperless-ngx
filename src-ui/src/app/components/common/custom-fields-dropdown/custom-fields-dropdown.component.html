@@ -1,27 +1,82 @@
-<div ngbDropdown #fieldDropdown="ngbDropdown" (openChange)="onOpenClose($event)" [popperOptions]="popperOptions" placement="bottom-end">
-    <button class="btn btn-sm btn-outline-primary" id="customFieldsDropdown" [disabled]="disabled" ngbDropdownToggle>
-      <i-bs name="ui-radios"></i-bs>
-      <div class="d-none d-sm-inline">&nbsp;<ng-container i18n>Custom Fields</ng-container></div>
-    </button>
-    <div ngbDropdownMenu aria-labelledby="customFieldsDropdown" class="shadow custom-fields-dropdown">
-        <div class="list-group list-group-flush" (keydown)="listKeyDown($event)">
-            <div class="list-group-item">
+@if (variant === 'accordion') {
+  <div ngbAccordion [activeIds]="accordionActiveId" (shown)="onAccordionShown()" (hidden)="onAccordionHidden()" class="custom-fields-dropdown__container-accordion">
+    <div ngbAccordionItem #accordionItem="ngbAccordionItem">
+      <h2 ngbAccordionHeader>
+        <button ngbAccordionButton i18n [disabled]="disabled">Custom Fields</button>
+      </h2>
+      <div ngbAccordionCollapse>
+        <div ngbAccordionBody>
+          <ng-template>
+            <div class="list-group list-group-flush" (keydown)="listKeyDown($event)">
+              <div class="p-2">
                 <div class="input-group input-group-sm">
                   <input class="form-control" type="text" [(ngModel)]="filterText" placeholder="Search fields" i18n-placeholder (keyup.enter)="listFilterEnter()" #listFilterTextInput>
                 </div>
-            </div>
-            @for (field of filteredFields; track field.id) {
-                <button class="list-group-item list-group-item-action bg-light" (click)="addField(field)" #button>
+              </div>
+              <div class="custom-fields-dropdown__list">
+                @for (field of filteredFields; track field.id) {
+                  <button type="button" class="list-group-item list-group-item-action bg-light" (click)="addField(field)" #button>
                     <small class="d-flex">{{field.name}} <small class="ms-auto text-muted">{{getDataTypeLabel(field.data_type)}}</small></small>
-                </button>
-            }
-            @if (!filterText?.length || filteredFields.length === 0) {
-                <button class="list-group-item list-group-item-action bg-light" (click)="createField(filterText)" [disabled]="!canCreateFields" #button>
+                  </button>
+                }
+                @if (!filterText?.length || filteredFields.length === 0) {
+                  <button type="button" class="list-group-item list-group-item-action bg-light" (click)="createField(filterText)" [disabled]="!canCreateFields" #button>
                     <small>
-                        <i-bs width=".9em" height=".9em" name="asterisk"></i-bs>&nbsp;<ng-container i18n>Create new field</ng-container>
+                      <i-bs width=".9em" height=".9em" name="asterisk"></i-bs>&nbsp;<ng-container i18n>Create new field</ng-container>
                     </small>
-                </button>
-            }
+                  </button>
+                }
+              </div>
+            </div>
+          </ng-template>
         </div>
+      </div>
     </div>
-</div>
+  </div>
+} @else {
+  <div
+    ngbDropdown
+    #fieldDropdown="ngbDropdown"
+    (openChange)="onOpenClose($event)"
+    [popperOptions]="popperOptions"
+    placement="bottom-end"
+  >
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary"
+      id="customFieldsDropdown"
+      [disabled]="disabled"
+      ngbDropdownToggle
+    >
+      <i-bs name="ui-radios"></i-bs>
+      <div class="d-none d-sm-inline">&nbsp;<ng-container i18n>Custom Fields</ng-container></div>
+    </button>
+    <div
+      ngbDropdownMenu
+      aria-labelledby="customFieldsDropdown"
+      [ngClass]="dropdownMenuClasses"
+    >
+      <div class="list-group list-group-flush" (keydown)="listKeyDown($event)">
+        <div class="p-2">
+          <div class="input-group input-group-sm">
+            <input class="form-control" type="text" [(ngModel)]="filterText" placeholder="Search fields" i18n-placeholder (keyup.enter)="listFilterEnter()" #listFilterTextInput>
+          </div>
+        </div>
+        <div class="custom-fields-dropdown__list">
+          @for (field of filteredFields; track field.id) {
+            <button type="button" class="list-group-item list-group-item-action bg-light" (click)="addField(field)" #button>
+              <small class="d-flex">{{field.name}} <small class="ms-auto text-muted">{{getDataTypeLabel(field.data_type)}}</small></small>
+            </button>
+          }
+          @if (!filterText?.length || filteredFields.length === 0) {
+            <button type="button" class="list-group-item list-group-item-action bg-light" (click)="createField(filterText)" [disabled]="!canCreateFields" #button>
+              <small>
+                <i-bs width=".9em" height=".9em" name="asterisk"></i-bs>&nbsp;<ng-container i18n>Create new field</ng-container>
+              </small>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

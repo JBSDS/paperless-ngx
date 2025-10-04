@@ -13,6 +13,7 @@
     @if (typeFieldDisabled) {
       <small class="d-block mt-n2" i18n>Data type cannot be changed after a field is created</small>
     }
+    <pngx-input-select i18n-title title="Applies to" [items]="getScopes()" formControlName="scope"></pngx-input-select>
     <div [formGroup]="objectForm.controls.extra_data">
       @switch (objectForm.get('data_type').value) {
         @case (CustomFieldDataType.Select) {

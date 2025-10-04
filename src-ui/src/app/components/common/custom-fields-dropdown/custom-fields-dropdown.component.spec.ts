@@ -17,7 +17,11 @@ import {
 import { NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of } from 'rxjs'
-import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
+import {
+  CustomField,
+  CustomFieldDataType,
+  CustomFieldScope,
+} from 'src/app/data/custom-field'
 import { CustomFieldsService } from 'src/app/services/rest/custom-fields.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
@@ -30,11 +34,13 @@ const fields: CustomField[] = [
     id: 0,
     name: 'Field 1',
     data_type: CustomFieldDataType.Integer,
+    scope: CustomFieldScope.Document,
   },
   {
     id: 1,
     name: 'Field 2',
     data_type: CustomFieldDataType.String,
+    scope: CustomFieldScope.Document,
   },
 ]
 
@@ -84,7 +90,7 @@ describe('CustomFieldsDropdownComponent', () => {
     let addedField
     component.added.subscribe((f) => (addedField = f))
     component.documentId = 11
-    component.addField({ field: fields[0].id } as any)
+    component.addField(fields[0])
     expect(addedField).not.toBeUndefined()
   })
 
@@ -102,6 +108,12 @@ describe('CustomFieldsDropdownComponent', () => {
     component['updateUnusedFields']()
     expect(component['unusedFields'].length).toEqual(1)
     expect(component['unusedFields'][0].name).toEqual('Field 2')
+  })
+
+  it('should respect scope when listing fields', () => {
+    component.scope = CustomFieldScope.Correspondent
+    component['updateUnusedFields']()
+    expect(component['unusedFields'].length).toEqual(0)
   })
 
   it('should support getting data type label', () => {
@@ -148,6 +160,15 @@ describe('CustomFieldsDropdownComponent', () => {
     expect(modal).not.toBeUndefined()
     const editDialog = modal.componentInstance as CustomFieldEditDialogComponent
     expect(editDialog.object.name).toEqual('Foo bar')
+  })
+
+  it('should switch to accordion styling when variant provided', () => {
+    component.variant = 'accordion'
+    fixture.detectChanges()
+    const pseudoSelect = fixture.debugElement.query(
+      By.css('.custom-fields-dropdown__pseudo-select')
+    )
+    expect(pseudoSelect).not.toBeNull()
   })
 
   it('should support arrow keyboard navigation', fakeAsync(() => {

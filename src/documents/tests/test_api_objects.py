@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from documents.models import Correspondent
+from documents.models import CustomField
 from documents.models import Document
 from documents.models import DocumentType
 from documents.models import StoragePath
@@ -140,6 +141,138 @@ class TestApiObjects(DirectoriesMixin, APITestCase):
             "2022-01-02",
             response.data["last_correspondence"],
         )
+
+    def test_correspondent_create_with_custom_fields(self):
+        custom_field = CustomField.objects.create(
+            name="Corresp Notes",
+            data_type=CustomField.FieldDataType.STRING,
+            scope=CustomField.FieldScope.CORRESPONDENT,
+        )
+
+        response = self.client.post(
+            "/api/correspondents/",
+            json.dumps(
+                {
+                    "name": "Support",
+                    "custom_fields": [
+                        {
+                            "field": custom_field.id,
+                            "value": "Premium",  # string value
+                        },
+                    ],
+                },
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        correspondent_id = response.data["id"]
+        self.assertIn("custom_fields", response.data)
+        self.assertEqual(
+            response.data["custom_fields"],
+            [
+                {
+                    "field": custom_field.id,
+                    "value": "Premium",
+                }
+            ],
+        )
+        correspondent = Correspondent.objects.get(id=correspondent_id)
+        self.assertEqual(correspondent.correspondent_custom_fields.count(), 1)
+        instance = correspondent.correspondent_custom_fields.first()
+        self.assertEqual(instance.field, custom_field)
+        self.assertEqual(instance.value, "Premium")
+
+    def test_correspondent_update_custom_fields_replaces_existing(self):
+        string_field = CustomField.objects.create(
+            name="Department",
+            data_type=CustomField.FieldDataType.STRING,
+            scope=CustomField.FieldScope.CORRESPONDENT,
+        )
+        number_field = CustomField.objects.create(
+            name="Priority",
+            data_type=CustomField.FieldDataType.INT,
+            scope=CustomField.FieldScope.CORRESPONDENT,
+        )
+
+        create_response = self.client.post(
+            "/api/correspondents/",
+            json.dumps(
+                {
+                    "name": "Finance",
+                    "custom_fields": [
+                        {
+                            "field": string_field.id,
+                            "value": "Billing",
+                        }
+                    ],
+                },
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        correspondent_id = create_response.data["id"]
+
+        correspondent = Correspondent.objects.get(id=correspondent_id)
+        payload = {
+            "id": correspondent.id,
+            "name": correspondent.name,
+            "match": correspondent.match,
+            "matching_algorithm": correspondent.matching_algorithm,
+            "is_insensitive": correspondent.is_insensitive,
+            "custom_fields": [
+                {"field": number_field.id, "value": 2},
+            ],
+        }
+
+        update_response = self.client.put(
+            f"/api/correspondents/{correspondent_id}/",
+            json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            update_response.data["custom_fields"],
+            [
+                {
+                    "field": number_field.id,
+                    "value": 2,
+                }
+            ],
+        )
+
+        correspondent.refresh_from_db()
+        custom_field_instances = correspondent.correspondent_custom_fields.all()
+        self.assertEqual(custom_field_instances.count(), 1)
+        instance = custom_field_instances.first()
+        self.assertEqual(instance.field, number_field)
+        self.assertEqual(instance.value, 2)
+
+    def test_correspondent_custom_field_scope_validation(self):
+        document_only_field = CustomField.objects.create(
+            name="Doc only",
+            data_type=CustomField.FieldDataType.STRING,
+            scope=CustomField.FieldScope.DOCUMENT,
+        )
+
+        response = self.client.post(
+            "/api/correspondents/",
+            json.dumps(
+                {
+                    "name": "HR",
+                    "custom_fields": [
+                        {
+                            "field": document_only_field.id,
+                            "value": "not allowed",
+                        }
+                    ],
+                },
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Custom field scope", json.dumps(response.data))
 
 
 class TestApiStoragePaths(DirectoriesMixin, APITestCase):
